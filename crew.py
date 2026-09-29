@@ -9,7 +9,6 @@ from recommendation_agent import create_recommendation_agent
 
 def run_admission_system(student):
 
-    # Get Groq API key
     api_key = os.environ.get("GROQ_API_KEY")
 
     if not api_key:
@@ -18,9 +17,9 @@ def run_admission_system(student):
     # Groq LLM
     llm = LLM(
         model="openai/gpt-oss-120b",
-        custom_openai=True,
-        base_url="https://api.groq.com/openai/v1",
         api_key=api_key,
+        base_url="https://api.groq.com/openai/v1",
+        custom_llm_provider="openai",
         temperature=0.2,
     )
 
@@ -31,9 +30,9 @@ def run_admission_system(student):
 
     recommendation_agent = create_recommendation_agent(llm)
 
-    # -----------------------------------
-    # Task 1: Admission Requirements
-    # -----------------------------------
+    # -----------------------------
+    # Task 1
+    # -----------------------------
 
     requirements_task = Task(
         description=f"""
@@ -67,13 +66,13 @@ def run_admission_system(student):
         BS Business Administration:
         Minimum 45%.
 
-        Clearly explain that these are demonstration
+        Clearly state that these are demonstration
         requirements and actual university requirements
         may be different.
         """,
 
         expected_output="""
-        Provide a clear report containing:
+        A clear admission requirements report containing:
 
         1. Academic requirements
         2. Subject requirements
@@ -84,20 +83,17 @@ def run_admission_system(student):
         agent=requirements_agent,
     )
 
-    # -----------------------------------
-    # Task 2: Eligibility Evaluation
-    # -----------------------------------
+    # -----------------------------
+    # Task 2
+    # -----------------------------
 
     eligibility_task = Task(
         description=f"""
-        Evaluate the student's eligibility.
-
-        Student information:
+        Evaluate this student's eligibility:
 
         {student}
 
-        Use the admission requirements provided by
-        the Requirements Agent.
+        Use the Requirements Agent's report.
 
         Explain:
 
@@ -111,7 +107,7 @@ def run_admission_system(student):
         """,
 
         expected_output="""
-        Provide a clear eligibility report containing:
+        A clear eligibility report containing:
 
         - Satisfied requirements
         - Unsatisfied requirements
@@ -121,13 +117,12 @@ def run_admission_system(student):
         """,
 
         agent=eligibility_agent,
-
         context=[requirements_task],
     )
 
-    # -----------------------------------
-    # Task 3: Program Recommendation
-    # -----------------------------------
+    # -----------------------------
+    # Task 3
+    # -----------------------------
 
     recommendation_task = Task(
         description=f"""
@@ -158,7 +153,7 @@ def run_admission_system(student):
         """,
 
         expected_output="""
-        Provide a clear recommendation report containing:
+        A clear program recommendation report containing:
 
         - Suitable programs
         - Reason for each recommendation
@@ -167,16 +162,15 @@ def run_admission_system(student):
         """,
 
         agent=recommendation_agent,
-
         context=[
             requirements_task,
             eligibility_task,
         ],
     )
 
-    # -----------------------------------
-    # Create Crew
-    # -----------------------------------
+    # -----------------------------
+    # Crew
+    # -----------------------------
 
     crew = Crew(
         agents=[
@@ -196,7 +190,6 @@ def run_admission_system(student):
         verbose=False,
     )
 
-    # Run CrewAI
     result = crew.kickoff()
 
     return result.raw
