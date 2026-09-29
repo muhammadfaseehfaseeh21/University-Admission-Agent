@@ -14,26 +14,19 @@ def run_admission_system(student):
     if not api_key:
         raise ValueError("GROQ_API_KEY is missing.")
 
-    # Groq LLM
+    # Groq LLM through CrewAI
     llm = LLM(
-        model="openai/gpt-oss-120b",
+        model="groq/openai/gpt-oss-120b",
         api_key=api_key,
-        base_url="https://api.groq.com/openai/v1",
-        custom_llm_provider="openai",
         temperature=0.2,
     )
 
-    # Create the three agents
+    # Create agents
     requirements_agent = create_requirements_agent(llm)
-
     eligibility_agent = create_eligibility_agent(llm)
-
     recommendation_agent = create_recommendation_agent(llm)
 
-    # -----------------------------
-    # Task 1
-    # -----------------------------
-
+    # Task 1: Requirements
     requirements_task = Task(
         description=f"""
         Check the admission requirements for this student:
@@ -70,7 +63,6 @@ def run_admission_system(student):
         requirements and actual university requirements
         may be different.
         """,
-
         expected_output="""
         A clear admission requirements report containing:
 
@@ -79,14 +71,10 @@ def run_admission_system(student):
         3. Required documents
         4. Important notes
         """,
-
         agent=requirements_agent,
     )
 
-    # -----------------------------
-    # Task 2
-    # -----------------------------
-
+    # Task 2: Eligibility
     eligibility_task = Task(
         description=f"""
         Evaluate this student's eligibility:
@@ -105,7 +93,6 @@ def run_admission_system(student):
 
         Do not guarantee admission.
         """,
-
         expected_output="""
         A clear eligibility report containing:
 
@@ -115,15 +102,11 @@ def run_admission_system(student):
         - Potential concerns
         - Overall eligibility assessment
         """,
-
         agent=eligibility_agent,
         context=[requirements_task],
     )
 
-    # -----------------------------
-    # Task 3
-    # -----------------------------
-
+    # Task 3: Program Recommendation
     recommendation_task = Task(
         description=f"""
         Recommend suitable university programs for:
@@ -151,7 +134,6 @@ def run_admission_system(student):
 
         Do not guarantee admission.
         """,
-
         expected_output="""
         A clear program recommendation report containing:
 
@@ -160,7 +142,6 @@ def run_admission_system(student):
         - Eligibility considerations
         - Important verification notes
         """,
-
         agent=recommendation_agent,
         context=[
             requirements_task,
@@ -168,28 +149,23 @@ def run_admission_system(student):
         ],
     )
 
-    # -----------------------------
-    # Crew
-    # -----------------------------
-
+    # Create Crew
     crew = Crew(
         agents=[
             requirements_agent,
             eligibility_agent,
             recommendation_agent,
         ],
-
         tasks=[
             requirements_task,
             eligibility_task,
             recommendation_task,
         ],
-
         process=Process.sequential,
-
         verbose=False,
     )
 
+    # Run Crew
     result = crew.kickoff()
 
     return result.raw
