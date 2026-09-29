@@ -14,7 +14,7 @@ def run_admission_system(student):
     if not api_key:
         raise ValueError("GROQ_API_KEY is missing.")
 
-    # Groq LLM through CrewAI
+    # Groq LLM
     llm = LLM(
         model="groq/openai/gpt-oss-120b",
         api_key=api_key,
@@ -26,18 +26,24 @@ def run_admission_system(student):
     eligibility_agent = create_eligibility_agent(llm)
     recommendation_agent = create_recommendation_agent(llm)
 
-    # Task 1: Requirements
+    # ------------------------------------------------
+    # TASK 1: Admission Requirements
+    # ------------------------------------------------
+
     requirements_task = Task(
         description=f"""
-        Check the admission requirements for this student:
+        Check the admission requirements for this student.
 
+        Student Information:
         {student}
 
         Check:
-        - Minimum academic marks
-        - Required subjects
-        - Basic documents
-        - Program requirements
+
+        1. Academic marks
+        2. Academic group
+        3. Required subjects
+        4. Basic documents
+        5. Program requirements
 
         Use these demonstration requirements:
 
@@ -59,26 +65,33 @@ def run_admission_system(student):
         BS Business Administration:
         Minimum 45%.
 
-        Clearly state that these are demonstration
-        requirements and actual university requirements
-        may be different.
+        Important:
+        These are demonstration requirements only.
+        Actual university requirements may be different.
         """,
+
         expected_output="""
         A clear admission requirements report containing:
 
         1. Academic requirements
         2. Subject requirements
         3. Required documents
-        4. Important notes
+        4. Program requirements
+        5. Important notes
         """,
+
         agent=requirements_agent,
     )
 
-    # Task 2: Eligibility
+    # ------------------------------------------------
+    # TASK 2: Eligibility
+    # ------------------------------------------------
+
     eligibility_task = Task(
         description=f"""
-        Evaluate this student's eligibility:
+        Evaluate the apparent eligibility of this student.
 
+        Student Information:
         {student}
 
         Use the Requirements Agent's report.
@@ -93,6 +106,7 @@ def run_admission_system(student):
 
         Do not guarantee admission.
         """,
+
         expected_output="""
         A clear eligibility report containing:
 
@@ -102,70 +116,85 @@ def run_admission_system(student):
         - Potential concerns
         - Overall eligibility assessment
         """,
+
         agent=eligibility_agent,
+
         context=[requirements_task],
     )
 
-    # Task 3: Program Recommendation
+    # ------------------------------------------------
+    # TASK 3: Program Recommendation
+    # ------------------------------------------------
+
     recommendation_task = Task(
         description=f"""
-        Recommend suitable university programs for:
+        Recommend suitable university programs for this student.
 
+        Student Information:
         {student}
 
         Consider:
 
-        - Academic marks
-        - Academic group
-        - Student interests
-        - Eligibility assessment
+        1. Academic marks
+        2. Academic group
+        3. Student interests
+        4. Eligibility assessment
 
         Available programs:
 
-        1. BS Computer Science
-        2. BS Software Engineering
-        3. BS Artificial Intelligence
-        4. BS Data Science
-        5. BS Cyber Security
-        6. BS Business Administration
+        - BS Computer Science
+        - BS Software Engineering
+        - BS Artificial Intelligence
+        - BS Data Science
+        - BS Cyber Security
+        - BS Business Administration
 
-        Explain why each recommended program
-        may be suitable.
+        Explain why each suitable program may match
+        the student's academic background and interests.
 
         Do not guarantee admission.
         """,
+
         expected_output="""
         A clear program recommendation report containing:
 
-        - Suitable programs
-        - Reason for each recommendation
-        - Eligibility considerations
-        - Important verification notes
+        1. Suitable programs
+        2. Reason for each recommendation
+        3. Eligibility considerations
+        4. Important verification notes
         """,
+
         agent=recommendation_agent,
+
         context=[
             requirements_task,
             eligibility_task,
         ],
     )
 
-    # Create Crew
+    # ------------------------------------------------
+    # CREATE CREW
+    # ------------------------------------------------
+
     crew = Crew(
         agents=[
             requirements_agent,
             eligibility_agent,
             recommendation_agent,
         ],
+
         tasks=[
             requirements_task,
             eligibility_task,
             recommendation_task,
         ],
+
         process=Process.sequential,
+
         verbose=False,
     )
 
-    # Run Crew
+    # Run the multi-agent system
     result = crew.kickoff()
 
     return result.raw
