@@ -1,5 +1,18 @@
 import os
 
+# ------------------------------------------------
+# FIX FOR CREWAI + GROQ CACHE_BREAKPOINT ERROR
+# ------------------------------------------------
+
+try:
+    import crewai.llms.cache as crew_cache
+
+    crew_cache.mark_cache_breakpoint = lambda message: message
+
+except Exception:
+    pass
+
+
 from crewai import Crew, LLM, Process, Task
 
 from requirements_agent import create_requirements_agent
@@ -7,27 +20,43 @@ from eligibility_agent import create_eligibility_agent
 from recommendation_agent import create_recommendation_agent
 
 
+# ------------------------------------------------
+# MAIN ADMISSION SYSTEM
+# ------------------------------------------------
+
 def run_admission_system(student):
 
+    # Get Groq API key
     api_key = os.environ.get("GROQ_API_KEY")
 
     if not api_key:
-        raise ValueError("GROQ_API_KEY is missing.")
+        raise ValueError(
+            "GROQ_API_KEY is missing. "
+            "Please add it to Streamlit Secrets."
+        )
 
-    # Groq LLM
+    # ------------------------------------------------
+    # GROQ LLM
+    # ------------------------------------------------
+
     llm = LLM(
         model="groq/openai/gpt-oss-120b",
         api_key=api_key,
         temperature=0.2,
     )
 
-    # Create agents
+    # ------------------------------------------------
+    # CREATE AGENTS
+    # ------------------------------------------------
+
     requirements_agent = create_requirements_agent(llm)
+
     eligibility_agent = create_eligibility_agent(llm)
+
     recommendation_agent = create_recommendation_agent(llm)
 
     # ------------------------------------------------
-    # TASK 1: Admission Requirements
+    # TASK 1 - REQUIREMENTS
     # ------------------------------------------------
 
     requirements_task = Task(
@@ -35,6 +64,7 @@ def run_admission_system(student):
         Check the admission requirements for this student.
 
         Student Information:
+
         {student}
 
         Check:
@@ -84,7 +114,7 @@ def run_admission_system(student):
     )
 
     # ------------------------------------------------
-    # TASK 2: Eligibility
+    # TASK 2 - ELIGIBILITY
     # ------------------------------------------------
 
     eligibility_task = Task(
@@ -92,6 +122,7 @@ def run_admission_system(student):
         Evaluate the apparent eligibility of this student.
 
         Student Information:
+
         {student}
 
         Use the Requirements Agent's report.
@@ -119,18 +150,22 @@ def run_admission_system(student):
 
         agent=eligibility_agent,
 
-        context=[requirements_task],
+        context=[
+            requirements_task
+        ],
     )
 
     # ------------------------------------------------
-    # TASK 3: Program Recommendation
+    # TASK 3 - RECOMMENDATION
     # ------------------------------------------------
 
     recommendation_task = Task(
         description=f"""
-        Recommend suitable university programs for this student.
+        Recommend suitable university programs
+        for this student.
 
         Student Information:
+
         {student}
 
         Consider:
@@ -194,7 +229,10 @@ def run_admission_system(student):
         verbose=False,
     )
 
-    # Run the multi-agent system
+    # ------------------------------------------------
+    # RUN CREW
+    # ------------------------------------------------
+
     result = crew.kickoff()
 
     return result.raw
